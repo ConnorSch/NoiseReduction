@@ -17,6 +17,8 @@ figure(1)
 Un(:,:,:)=reshape(Undata(1,:),n,n,n);
 close all, isosurface(X,Y,Z,abs(Un),0.4)
 axis([-20 20 -20 20 -20 20]), grid on, drawnow
+xlabel('X'); ylabel('Y'); zlabel('Z');
+title('Raw data at first signal pass')
 
 %% Average the noisy singal and find central frequency
 % iterate through the first 20 realizations
@@ -47,6 +49,9 @@ Uave = abs(fftshift(Uave)); %shift and take abs value of averaged data
 % sanity check of max value calculation 
 fprintf('Max value of function (abs): %d \n',abs(value));
 fprintf('Uave value at position r,c,p (abs): %d \n', abs(Uave(r,c,p)));
+
+% print locaton of central frequency
+fprintf('Location of central frequency: %d, %d, %d \n', r,c,p);
 
 %% Create Filter and Plot Marble Path
 % create the filter to de-noise the data around the central frequency

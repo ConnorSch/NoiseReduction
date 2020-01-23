@@ -1,0 +1,224 @@
+\documentclass{article}
+
+% If you're new to LaTeX, here's some short tutorials:
+% https://www.overleaf.com/learn/latex/Learn_LaTeX_in_30_minutes
+% https://en.wikibooks.org/wiki/LaTeX/Basics
+
+% Formatting
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage[titletoc,title]{appendix}
+\usepackage{listings}
+\usepackage{caption}
+
+% Math
+% https://www.overleaf.com/learn/latex/Mathematical_expressions
+% https://en.wikibooks.org/wiki/LaTeX/Mathematics
+\usepackage{amsmath,amsfonts,amssymb,mathtools}
+
+% Images
+% https://www.overleaf.com/learn/latex/Inserting_Images
+% https://en.wikibooks.org/wiki/LaTeX/Floats,_Figures_and_Captions
+\usepackage{graphicx,float}
+
+% Tables
+% https://www.overleaf.com/learn/latex/Tables
+% https://en.wikibooks.org/wiki/LaTeX/Tables
+
+% Algorithms
+% https://www.overleaf.com/learn/latex/algorithms
+% https://en.wikibooks.org/wiki/LaTeX/Algorithms
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{algorithmic}
+
+% Code syntax highlighting
+% https://www.overleaf.com/learn/latex/Code_Highlighting_with_minted
+\usepackage{minted}
+\usemintedstyle{borland}
+
+% References
+% https://www.overleaf.com/learn/latex/Bibliography_management_in_LaTeX
+% https://en.wikibooks.org/wiki/LaTeX/Bibliography_Management
+\usepackage{biblatex}
+\addbibresource{references.bib}
+
+% Title content
+\title{AMATH 582 Homework 1}
+\author{Connor Schleicher}
+\date{January 24, 2020}
+
+\begin{document}
+
+\maketitle
+
+% Abstract
+\begin{abstract}
+    The raw data from an ultrasound taken at a constant frequency is analyzed to find the frequency and location of the object in question. 
+\end{abstract}
+
+% Introduction and Overview
+\section{Introduction and Overview}
+
+Digital signal processing is used daily in our modern lives from digital image processing in our phones, radar detection, ultrasounds, and speech processing and cognition in our digital AI based assistants \cite{digital_signal}. A subset of signal processing is time frequency analysis which allows us to discern time frequency data from spatial data points. The processes handling these signals are fast and accurate. Without the ability to filter out the noise all these signals being transmitted would be meaningless. 
+
+In this analysis a raw digital signal is provided with no information about frequency and with ample noise surrounding the true object reflecting the signal. The object in question is a marble which was accidentally ingested by an unsuspecting dog. In order to begin to find the location of the object, the central frequency must be obtained. The initial signal is provided as spatial data over twenty different samplings. It is possible to average the noise out of the signal by transforming the raw signal and adding it to the previously transformed signal. This is repeated over all the samples, then divided by the total samples to obtain the average. This creates a new signal where all the noise cancels and all that is left is the central frequency \cite{kutz_2013}. 
+
+After the central frequency is known, a filter must be applied to each sampling to de-noise the signal. This filter is applied over a narrow enough bandwidth to catch the signal while trying to not be too wide and losing resolution. A simple Gaussian filter is sufficient to capture the true signal and find the location of the signal in the sea of noise. 
+
+With the filter applied to the data, the only signal that is left is the true signal. The location data from this signal can be extracted and plotted showing the path of the object. The final location point can be assumed to be the current location of the object at the time of measurement. 
+
+%  Theoretical Background
+\section{Theoretical Background}
+
+\subsection{Fourier Transform}
+
+The Fourier transform can translate a signal of time into its frequency components. The Fourier transform is defined by:
+\begin{equation}
+    F(x) = \frac{1}{2\pi}  \int_{-\infty}^{\infty} e^{-ikx} f(x)dx
+    \label{eqn:fouriertransform}
+\end{equation}
+Along with the corresponding inverse Fourier transform to get back to the original function: 
+\begin{equation}
+    f(x) = \frac{1}{2\pi}  \int_{-\infty}^{\infty} e^{ikx} F(k)dk
+    \label{eqn:inversefouriertransform}
+\end{equation}
+Linear computations done in the Fourier space has a corresponding operation in the function, time, space \cite{fourier_transform}. The advantage of translating something into Fourier space is there is usually a computational advantage in doing so. This computational advantage is especially noticeable in taking derivatives. It can be proven that the derivative in Fourier space simplifies to this linear relationship \cite{kutz_2013}:
+\begin{equation}
+    \widehat{f'(x)} = ik\widehat{f(x)}
+    \label{eqn:fourierderivative}
+\end{equation}
+
+\subsection{Fast Fourier Transform}
+
+The Fast Fourier Transform (FFT) is a numerical routine used to perform the forward and backward Fourier transforms. The FFT is a discrete Fourier transform assuming periodic boundary conditions on interval $x \in [-L,L]$ \cite{kutz_2013}. One of the main advantages of the FFT is its speed compared to other similar algorithms. It reduces the order of operations to O\texttt{(2NlgN)}, where lg is the base-2 logarithm \cite{fft}. 
+
+\subsection{Gaussian Filter}
+
+The Gaussian, or normal distribution function acts as a low-pass filter since it eliminates high-frequency components over the defined bandwidth \cite{kutz_2013}. The filter in three dimensions can be defined by the following: 
+\begin{equation}
+    f(kx,ky,kz) = e^{-\tau((kx-fx)^2 + (ky-fy)^2 + (kz-fz)^2)}
+    \label{eqn:3dgaussian}
+\end{equation}
+The bandwidth is defined by $\tau$ and is used to narrow the frequency window to provide more or less definition from the filter.
+
+% Algorithm Implementation and Development
+\section{Algorithm Implementation and Development}
+In solving this question the program was broken into three distinct sections, separating the logical steps in solving the problem: 
+\begin{enumerate}
+    \item Initialization of program (Algorithm~\ref{alg:initialization})
+    \item Averaging of noisy signal and finding central frequency (Algorithm~\ref{alg:averaging})
+    \item Create filter and plot marble path (Algorithm~\ref{alg:filtering})
+\end{enumerate}
+
+\begin{algorithm}
+    \begin{algorithmic}
+        \STATE{Import data from \texttt{Testdata.mat}}
+        \STATE{ISOSURFACE(X,Y,Z,abs(Un),0.4)}
+    \end{algorithmic}
+    \caption{Initialization}
+    \label{alg:initialization}
+\end{algorithm}
+    
+\begin{algorithm}
+\begin{algorithmic}
+    \STATE{Initialize \texttt{U average} to zeros matrix}
+    
+    \FOR{$j = 1:20$}
+        \STATE{Extract measurement $j$ from \texttt{Undata}}
+        \STATE{Add the Fourier transform of \texttt{Undata} to \texttt{U average}}
+    \ENDFOR
+    
+    \STATE{Shift and take absolute value of \texttt{U average}}
+    \STATE{Get max value from \texttt{U average}, this is the central frequency}
+\end{algorithmic}
+\caption{Averaging Signal and Finding Central Frequency}
+\label{alg:averaging}
+\end{algorithm}
+
+\begin{algorithm}
+\begin{algorithmic}
+    \STATE{Create 3D Gaussian filter around central frequency location}
+    
+    \STATE{Initialize variables to zeros vectors}
+    \FOR{$j = 1:20$}
+        \STATE{Extract measurement $j$ from \texttt{Undata}}
+        \STATE{Apply Fourier transform and shift \texttt{Undata}}
+        
+        \STATE{Multiply the transformed and shifted data by the filter}
+        \STATE{Get max value of the filter and store the matrix index}
+        \STATE{Find and store \texttt{X,Y,Z} locations from the matrix index}
+    \ENDFOR
+    
+    \STATE{Plot marble path by plotting \texttt{X,Y,Z} locations}
+\end{algorithmic}
+\caption{Averaging Signal and Finding Central Frequency}
+\label{alg:filtering}
+\end{algorithm}
+ 
+% Computational Results
+\section{Computational Results}
+
+After importing the data, the raw data was plotted using the isosurface function in Matlab, see Figure~\ref{fig:raw}. From this image there is no visually identifiable signal. 
+
+% begin{figure}[tb] % t = top, b = bottom, etc.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{RawData.jpg}
+    \caption{Isosurface plot of raw data for first signal scan.}
+    \label{fig:raw}
+\end{figure}
+
+The method of averaging was able to de-noise the data sufficiently to identify the central frequency. This process, defined in~\ref{alg:averaging}, essentially filtered out the excess frequencies and the resulting isosurface plot showed a clear signal that persisted throughout the averaging process. Figure~\ref{fig:avg} shows the signal that persisted throughout the averaging. 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{AvgSignal.jpg}
+    \caption{Central frequency persists after averaging noise out of the signal.}
+    \label{fig:avg}
+\end{figure}
+
+The max value of the average signal was \texttt{5,437}, with an index location of \texttt{Row 28, Column 42, Slice 33}. With the central frequency known, the Gaussian filter could be applied to each signal record. By finding the max frequency for each record the marble's location could be found and plotted, as seen in Figure~\ref{fig:marble}. The final position of the marble can be seen in red in Figure~\ref{fig:marble}, and is at position:\texttt{X: -5.6250, Y: 4.2188, Z: -6.0938}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{MarblePath.jpg}
+    \caption{Marble path found starting from the top and spiraling downward.}
+    \label{fig:marble}
+\end{figure}
+
+% Summary and Conclusions
+\section{Summary and Conclusions}
+
+Signal processing is a process occuring in our everyday life. The ability to quickly filter out the important information and remove the noise from the raw signal is a vital process. In this analysis an ultrasound signal was processed to identify the underlying frequency which it was emitted at. Once the frequency was determined, the noise could be removed and the location of the marble was determined. This location data can provide an accurate path of the marble as it moves through the dog. 
+
+% References
+\printbibliography
+
+% Appendices
+\begin{appendices}
+
+% MATLAB Functions
+\section{MATLAB Functions}
+Add your important MATLAB functions here with a brief implementation explanation. This is how to make an \textbf{unordered} list:
+\begin{itemize}
+
+    \item \texttt{isosurface(X,Y,Z,abs(Un),0.4)} constructs an isosurface plot along the X,Y,Z axes. The data, \texttt{abs(Un)} acts as the volume data being displayed. The isosurface value, \texttt{0.4}, specifies where the isosurface data is computed.
+    
+    \item \texttt{fftn(Un)} creates the \texttt{N} dimensional Fourier Transform of \texttt{Un} using the fast Fourier transform algorithm. The output is the same size of as the input function and assumed the same dimension of the input function. 
+    
+    \item \texttt{fftshift(Uave)} rearranges Fourier transformed data by shifting the zero-frequency component to the center. This is done by alternating half space intervals over the number of dimensions in the input argument. 
+    
+    \item \texttt{reshape(Undata(1,:),n,n,n} converts the vector \texttt{Undata} into a \texttt{NxNxN} matrix. 
+    
+    \item \texttt{ind2sub(size(Uave),idx)} translates the index of a value \texttt{idx} to the row, column, slice's of the matrix
+\end{itemize}
+
+% MATLAB Codes
+\section{MATLAB Code}
+Add your MATLAB code here. This section will not be included in your page limit of six pages.
+
+\lstinputlisting[language=Matlab]{program.m}
+
+\end{appendices}
+
+\end{document}
